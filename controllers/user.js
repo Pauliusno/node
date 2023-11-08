@@ -2,6 +2,7 @@ import UserModel from "../models/user.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import TicketModel from "../models/ticket.js";
+import mongoose from "mongoose";
 
 // const BUY_TICKET = async (req, res) => {
 //   try {
@@ -22,17 +23,83 @@ import TicketModel from "../models/ticket.js";
 //     return res.status(500).json({ message: "something went wrong" });
 //   }
 // };
+// const GET_USERS_WHO_BOUGHT_TICKETS = async (req, res) => {
+//   try {
+//     const users = await UserModel.find().aggregate([
+//       {
+//         $lookup: {
+//           from: "tickets",
+//           localField: "bought_tickets",
+//           foreignField: "id",
+//           as: "user_bought_tickets",
+//         },
+//       },
+//     ]);
+
+//     return res.status(200).json({ users: users });
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).json({ message: "something went wrong" });
+//   }
+// };
+
+const GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
+  try {
+    const users = await UserModel.aggregate([
+      {
+        $lookup: {
+          from: "tickets",
+          localField: "bought_tickets",
+          foreignField: "id",
+          as: "user_bought_tickets",
+        },
+      },
+      {
+        $match: {
+          user_bought_tickets: { $exists: true },
+          "user_bought_tickets.0": { $exists: true },
+        },
+      },
+    ]);
+
+    return res.status(200).json({ users: users });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "something went wrong" });
+  }
+};
+
+const GET_USER_WITH_TICKET_BY_ID = async (req, res) => {
+  try {
+    const users = await UserModel.aggregate([
+      {
+        $lookup: {
+          from: "tickets",
+          localField: "bought_tickets",
+          foreignField: "id",
+          as: "user_bought_tickets",
+        },
+      },
+      { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
+    ]);
+
+    return res.status(200).json({ users: users });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "something went wrong" });
+  }
+};
 
 const BUY_TICKET = async (req, res) => {
   try {
-    const userId = req.params.id; // Assuming user ID is in the URL
+    const userId = req.params.id;
     const user = await UserModel.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User does not exist" });
     }
 
-    const ticketId = req.body.ticketId; // Assuming ticket ID is in the request body
+    const ticketId = req.body.ticketId;
     const ticket = await TicketModel.findById(ticketId);
 
     if (!ticket) {
@@ -46,13 +113,8 @@ const BUY_TICKET = async (req, res) => {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Deduct the ticket price from the user's money_balance
     user.money_balance -= ticketPrice;
-
-    // Add the ticketId to the user's bought_tickets array
     user.bought_tickets.push(ticketId);
-
-    // Save the updated user document
     await user.save();
 
     return res.status(200).json({ message: "You have bought the ticket" });
@@ -64,7 +126,7 @@ const BUY_TICKET = async (req, res) => {
 
 const GET_ALL_USERS = async (req, res) => {
   try {
-    const users = await UserModel.find().sort({ name: 1 }); // Sort by name in ascending order (1)
+    const users = await UserModel.find().sort({ name: 1 });
     return res.status(201).json({ users: users });
   } catch (err) {
     console.log(err);
@@ -143,4 +205,12 @@ const LOGIN = async (req, res) => {
   });
 };
 
-export { REGISTER_USER, LOGIN, GET_ALL_USERS, GET_USER_BY_ID, BUY_TICKET };
+export {
+  REGISTER_USER,
+  LOGIN,
+  GET_ALL_USERS,
+  GET_USER_BY_ID,
+  BUY_TICKET,
+  GET_USER_WITH_TICKET_BY_ID,
+  GET_ALL_USERS_WITH_TICKETS,
+};
