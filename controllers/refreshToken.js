@@ -11,14 +11,14 @@ const REFRESH_TOKEN = async (req, res) => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-    // Check if the user with the decoded userId exists
+    // patikrina ar user su decoded userId yra
     const user = await UserModel.findById(decoded.userId);
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Generate a new temporary token with a shorter expiration time
+    // sugeneruojam nauja jwt
     const token = jwt.sign(
       { email: user.email, userId: user._id },
       process.env.JWT_SECRET,
